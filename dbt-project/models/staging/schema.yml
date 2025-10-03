@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: stg_rakuten_products
+    description: Cleaned and normalized product data from Rakuten API
+    columns:
+      - name: item_code
+        description: Unique product code
+        tests:
+          - not_null
+          - unique
+
+      - name: item_name
+        description: Product name
+
+      - name: item_url
+        description: URL to the product page
+
+      - name: item_price
+        description: Product price in JPY
+
+      - name: shop_code
+        description: Shop identifier
+
+      - name: shop_name
+        description: Shop name
+
+      - name: review_count
+        description: Number of reviews
+
+      - name: review_average
+        description: Average review rating
+
+      - name: loaded_at
+        description: Timestamp when the data was loaded

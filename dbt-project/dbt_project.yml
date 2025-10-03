@@ -1,0 +1,39 @@
+name: 'rakuten_search'
+version: '1.0.0'
+config-version: 2
+
+profile: 'rakuten_search'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+models:
+  rakuten_search:
+    # Raw layer: Store raw data from GCS
+    raw:
+      +materialized: table
+      +schema: raw
+
+    # Staging layer: Basic cleaning and normalization
+    staging:
+      +materialized: view
+      +schema: staging
+
+    # Intermediate layer: Business logic and transformations
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+
+    # Mart layer: Final analytical tables
+    mart:
+      +materialized: table
+      +schema: mart

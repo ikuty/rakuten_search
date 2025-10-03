@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# dbt
+dbt-project/target/
+dbt-project/dbt_packages/
+dbt-project/logs/
+dbt-project/.user.yml
+
+# Terraform
+terraform/environments/*/.terraform/
+terraform/environments/*/.terraform.lock.hcl
+terraform/environments/*/terraform.tfstate
+terraform/environments/*/terraform.tfstate.backup
+terraform/environments/*/*.tfplan
+*.tfvars.backup
+
+# SSH Keys (exclude all except .gitkeep and README.md)
+ssh-keys/*
+!ssh-keys/.gitkeep
+!ssh-keys/README.md
+
+# Environment files
+.env
+*.env
+!.env.example
+
+# GCP credentials
+*.json
+!dbt-project/profiles.example.yml
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Data files
+*.jsonl
+*.csv
+*.parquet

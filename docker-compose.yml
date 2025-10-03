@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rakuten-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rakuten_data}
+      POSTGRES_USER: ${POSTGRES_USER:-datauser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rakuten-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datauser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  python-search:
+    build:
+      context: ./python-search
+      dockerfile: Dockerfile
+    container_name: rakuten-python-search
+    environment:
+      RAKUTEN_API_KEY: ${RAKUTEN_API_KEY}
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account-key.json
+      SEARCH_KEYWORD: ${SEARCH_KEYWORD:-ノートパソコン}
+      SHOP_CODE: ${SHOP_CODE}
+      HITS_PER_PAGE: ${HITS_PER_PAGE:-30}
+      MAX_PAGES: ${MAX_PAGES:-10}
+      REQUEST_DELAY: ${REQUEST_DELAY:-1.0}
+      OUTPUT_PREFIX: ${OUTPUT_PREFIX:-rakuten_products}
+    volumes:
+      - ./python-search:/app
+      - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+    networks:
+      - rakuten-network
+    profiles:
+      - search
+    command: python search.py
+
+  dbt:
+    build:
+      context: ./dbt-project
+      dockerfile: Dockerfile
+    container_name: rakuten-dbt
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-rakuten_data}
+      POSTGRES_USER: ${POSTGRES_USER:-datauser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account-key.json
+    volumes:
+      - ./dbt-project:/app
+      - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+    networks:
+      - rakuten-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dbt
+    working_dir: /app
+    command: dbt run
+
+networks:
+  rakuten-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

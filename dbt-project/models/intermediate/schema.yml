@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: int_products_enriched
+    description: Product data with calculated fields and business logic applied
+    columns:
+      - name: item_code
+        description: Unique product code
+        tests:
+          - not_null
+          - unique
+
+      - name: estimated_points
+        description: Estimated Rakuten points earned from purchase
+
+      - name: price_category
+        description: Categorized price range (low, medium, high, premium)
+
+      - name: is_highly_rated
+        description: Flag indicating if product has good reviews (10+ reviews, 4.0+ rating)
+
+      - name: shipping_type
+        description: Shipping convenience category (free_shipping, next_day, standard)
+
+      - name: effective_price
+        description: Price after deducting estimated points

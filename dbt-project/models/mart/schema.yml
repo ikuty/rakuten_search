@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: dim_products
+    description: Product dimension table for analytical queries
+    columns:
+      - name: item_code
+        description: Unique product code (primary key)
+        tests:
+          - not_null
+          - unique
+
+      - name: item_name
+        description: Product name
+
+      - name: item_price
+        description: Original product price in JPY
+        tests:
+          - not_null
+
+      - name: effective_price
+        description: Price after deducting estimated points
+
+      - name: price_category
+        description: Categorized price range
+        tests:
+          - accepted_values:
+              values: ['low', 'medium', 'high', 'premium']
+
+      - name: shop_code
+        description: Shop identifier
+        tests:
+          - not_null
+
+      - name: is_highly_rated
+        description: Flag for products with good reviews
+
+      - name: shipping_type
+        description: Shipping convenience category
+        tests:
+          - accepted_values:
+              values: ['free_shipping', 'next_day', 'standard']
+
+      - name: processed_at
+        description: Timestamp when the mart table was created/updated
