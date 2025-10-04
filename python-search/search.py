@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 import requests
 from google.cloud import storage
@@ -109,7 +110,11 @@ def main():
     uploader = GCSUploader(Config.GCS_BUCKET_NAME, Config.GCS_CREDENTIALS_PATH)
 
     all_items = []
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # JSTタイムゾーンで現在時刻を取得
+    jst_now = datetime.now(ZoneInfo("Asia/Tokyo"))
+    year_month = jst_now.strftime("%Y%m")
+    year_month_day = jst_now.strftime("%Y%m%d")
 
     for page in range(1, Config.MAX_PAGES + 1):
         try:
@@ -139,7 +144,8 @@ def main():
             break
 
     if all_items:
-        blob_name = f"{Config.OUTPUT_PREFIX}_{timestamp}.jsonl"
+        # 固定ファイル名: raw/search/yyyymm/search_items_yyyymmdd.jsonl (1日1回上書き)
+        blob_name = f"raw/search/{year_month}/search_items_{year_month_day}.jsonl"
         uploader.upload_jsonl(all_items, blob_name)
         logger.info(f"Total items collected: {len(all_items)}")
     else:

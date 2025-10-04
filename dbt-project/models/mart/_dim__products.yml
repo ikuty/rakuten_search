@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: dim_products
+  - name: dim__products
     description: Product dimension table for analytical queries
     columns:
       - name: item_code

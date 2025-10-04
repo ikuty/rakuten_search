@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw data loaded from external sources
+    schema: public_raw
+    tables:
+      - name: rakuten_products_raw
+        description: Raw Rakuten product search results stored as JSONB
+        columns:
+          - name: data
+            description: JSONB column containing raw product data from Rakuten API
+          - name: loaded_at
+            description: Timestamp when the data was loaded into the database

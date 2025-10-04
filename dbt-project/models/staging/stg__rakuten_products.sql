@@ -5,7 +5,7 @@
 }}
 
 WITH source AS (
-    SELECT * FROM {{ ref('rakuten_products_raw') }}
+    SELECT * FROM {{ source('raw', 'rakuten_products_raw') }}
 ),
 
 flattened AS (

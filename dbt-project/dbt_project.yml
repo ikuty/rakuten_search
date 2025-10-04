@@ -18,11 +18,6 @@ clean-targets:
 
 models:
   rakuten_search:
-    # Raw layer: Store raw data from GCS
-    raw:
-      +materialized: table
-      +schema: raw
-
     # Staging layer: Basic cleaning and normalization
     staging:
       +materialized: view

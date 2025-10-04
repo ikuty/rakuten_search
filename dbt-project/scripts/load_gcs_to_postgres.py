@@ -3,50 +3,56 @@
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import psycopg2
 from google.cloud import storage
 
 
-def download_latest_jsonl(bucket_name: str, prefix: str, destination_dir: str) -> str:
+def download_jsonl_for_date(bucket_name: str, destination_dir: str, execution_date: datetime) -> tuple[str, str]:
     """
-    Download the latest JSONL file from GCS.
+    Download JSONL file from GCS for the specified execution date.
+
+    File path format: raw/search/yyyymm/search_items_yyyymmdd.jsonl
 
     Args:
         bucket_name: GCS bucket name
-        prefix: Prefix to filter blobs
         destination_dir: Local directory to save the file
+        execution_date: Execution date (JST)
 
     Returns:
-        Path to downloaded file
+        Tuple of (downloaded file path, yyyymmdd string)
     """
     client = storage.Client()
     bucket = client.bucket(bucket_name)
 
-    # List all blobs with the given prefix
-    blobs = list(bucket.list_blobs(prefix=prefix))
+    year_month = execution_date.strftime("%Y%m")
+    year_month_day = execution_date.strftime("%Y%m%d")
 
-    if not blobs:
-        raise ValueError(f"No files found with prefix '{prefix}' in bucket '{bucket_name}'")
+    # 固定ファイル名: raw/search/yyyymm/search_items_yyyymmdd.jsonl
+    blob_name = f"raw/search/{year_month}/search_items_{year_month_day}.jsonl"
+    blob = bucket.blob(blob_name)
 
-    # Sort by time_created and get the latest
-    latest_blob = max(blobs, key=lambda b: b.time_created)
+    if not blob.exists():
+        raise ValueError(f"File not found: gs://{bucket_name}/{blob_name}")
 
     # Create destination directory if not exists
     dest_dir = Path(destination_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     # Download the file
-    destination_path = dest_dir / latest_blob.name.split('/')[-1]
-    latest_blob.download_to_filename(str(destination_path))
+    destination_path = dest_dir / f"search_items_{year_month_day}.jsonl"
+    blob.download_to_filename(str(destination_path))
 
-    print(f"Downloaded: {latest_blob.name} -> {destination_path}")
-    return str(destination_path)
+    print(f"Downloaded: gs://{bucket_name}/{blob_name} -> {destination_path}")
+    return str(destination_path), year_month_day
 
 
 def load_jsonl_to_postgres(
     file_path: str,
+    execution_date: datetime,
     db_host: str,
     db_port: int,
     db_name: str,
@@ -56,10 +62,12 @@ def load_jsonl_to_postgres(
     table: str = 'rakuten_products_raw'
 ):
     """
-    Load JSONL file to PostgreSQL.
+    Load JSONL file to PostgreSQL with idempotency.
+    Deletes existing records with the same loaded_at date before inserting.
 
     Args:
         file_path: Path to JSONL file
+        execution_date: Execution date (JST)
         db_host: PostgreSQL host
         db_port: PostgreSQL port
         db_name: Database name
@@ -90,8 +98,20 @@ def load_jsonl_to_postgres(
             )
         """)
 
-        # Truncate existing data (optional - comment out if you want to append)
-        cur.execute(f"TRUNCATE TABLE {schema}.{table}")
+        # 冪等性のため、実行日付に該当するレコードを削除
+        execution_date_start = execution_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        execution_date_end = execution_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        cur.execute(
+            f"DELETE FROM {schema}.{table} WHERE loaded_at >= %s AND loaded_at <= %s",
+            (execution_date_start, execution_date_end)
+        )
+        deleted_count = cur.rowcount
+        if deleted_count > 0:
+            print(f"Deleted {deleted_count} existing records for date {execution_date.strftime('%Y%m%d')}")
+
+        # 処理実行時のタイムスタンプを取得(JST)
+        jst_now = execution_date
 
         # Load JSONL data
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -99,13 +119,13 @@ def load_jsonl_to_postgres(
             for line in f:
                 if line.strip():
                     cur.execute(
-                        f"INSERT INTO {schema}.{table} (data) VALUES (%s)",
-                        (line.strip(),)
+                        f"INSERT INTO {schema}.{table} (data, loaded_at) VALUES (%s, %s)",
+                        (line.strip(), jst_now)
                     )
                     count += 1
 
         conn.commit()
-        print(f"Loaded {count} records into {schema}.{table}")
+        print(f"Loaded {count} records into {schema}.{table} at {jst_now}")
 
     except Exception as e:
         conn.rollback()
@@ -120,7 +140,6 @@ def main():
     """Main execution function."""
     # GCS settings
     bucket_name = os.getenv("GCS_BUCKET_NAME")
-    prefix = os.getenv("GCS_FILE_PREFIX", "rakuten_products")
     destination_dir = os.getenv("DOWNLOAD_DIR", "/tmp/gcs_data")
 
     # PostgreSQL settings
@@ -139,14 +158,19 @@ def main():
         sys.exit(1)
 
     try:
-        # Download latest file from GCS
-        print("Downloading latest file from GCS...")
-        file_path = download_latest_jsonl(bucket_name, prefix, destination_dir)
+        # 実行日付(JST)を取得
+        execution_date = datetime.now(ZoneInfo("Asia/Tokyo"))
+        print(f"Execution date (JST): {execution_date.strftime('%Y%m%d')}")
 
-        # Load to PostgreSQL
+        # Download file for execution date from GCS
+        print("Downloading file from GCS...")
+        file_path, yyyymmdd = download_jsonl_for_date(bucket_name, destination_dir, execution_date)
+
+        # Load to PostgreSQL with idempotency
         print("Loading data to PostgreSQL...")
         load_jsonl_to_postgres(
             file_path=file_path,
+            execution_date=execution_date,
             db_host=db_host,
             db_port=db_port,
             db_name=db_name,

@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: int_products_enriched
+  - name: int__products_enriched
     description: Product data with calculated fields and business logic applied
     columns:
       - name: item_code

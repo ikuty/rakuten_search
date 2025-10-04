@@ -5,7 +5,7 @@
 }}
 
 WITH products AS (
-    SELECT * FROM {{ ref('stg_rakuten_products') }}
+    SELECT * FROM {{ ref('stg__rakuten_products') }}
 ),
 
 enriched AS (

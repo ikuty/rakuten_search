@@ -5,7 +5,7 @@
 }}
 
 WITH products AS (
-    SELECT * FROM {{ ref('int_products_enriched') }}
+    SELECT * FROM {{ ref('int__products_enriched') }}
 ),
 
 final AS (

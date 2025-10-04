@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: stg_rakuten_products
+  - name: stg__rakuten_products
     description: Cleaned and normalized product data from Rakuten API
     columns:
       - name: item_code
